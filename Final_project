@@ -1,16 +1,20 @@
 Part 1: Yelp Dataset Profiling and Understanding1. 
 Profile the data by finding the total number of records for each of the tables below:
-i. Attribute table =— Count the tot number of records in this tableSelect count(*) as TotNumRecordsFrom attribute
 
+i. Count the tot number of records in Attribute table
 
-SELECT  AVG(Bs.stars) [Restaurants Stars Average]
+Select count(*) as TotNumRecords
+From attribute
 
-,MAX(Bs.stars) [Restaurants Stars Maximum]
-
-, MIN(Bs.stars) [Restaurants Stars minimum]
-
-FROM category Ct
-inner join business Bs on Bs.id = Ct.business_id
-
-where Ct.category = 'Restaurants'
    
+ii.Count the tot number of records in  Business table 
+
+Select count(*) as TotNumRecords
+From business
+
+iii. Count the tot number of records in Category table 
+
+Select count(*) as TotNumRecords
+From category
+
+iv. Checkin table =— Count the tot number of records in this tableSelect count(*) as TotNumRecordsFrom checkin
