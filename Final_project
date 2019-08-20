@@ -3,18 +3,390 @@ Profile the data by finding the total number of records for each of the tables b
 
 i. Count the tot number of records in Attribute table
 
+# Code:
 Select count(*) as TotNumRecords
 From attribute
+----
 
-   
-ii.Count the tot number of records in  Business table 
+iv. Count the tot number of records in this Checkin table 
 
+# Code:
 Select count(*) as TotNumRecords
+From checkin
+
+2. Find the total distinct records by either the foreign key or primary key for each table. 
+If two foreign keys are listed in the table, please specify which foreign key.
+
+# Code:
+i. Business 
+Select count(distinct (id)) as TotNumdistRec
 From business
 
-iii. Count the tot number of records in Category table 
+Select count(distinct (business_id)) as TotNumdistRec
+From attribute
 
-Select count(*) as TotNumRecords
-From category
+4. For each table and column listed below, display the smallest (minimum), largest (maximum), and average (mean) value for the 
+following fields: 
+i. Table: Review, Column: Stars
 
-iv. Checkin table =— Count the tot number of records in this tableSelect count(*) as TotNumRecordsFrom checkin
+# Code:
+
+--Compute the min/max and average value of this col in this table 
+Select min(stars) as minval
+,max(stars) as maxval
+,avg(stars) as average
+From review
+
+5. List the cities with the most reviews in descending order
+
+# Code:
+-- List the cities from table Business according to the # of reviews (review_count column)
+-- Create a new column with the sum of all business reviews grouped by city 
+
+Select city 
+,sum(review_count) as sumrevs_percity 
+From business 
+group by city 
+order by sumrevs_percity desc;
+
+6. Find the distribution of star ratings to the business in the following cities:
+i. Avon
+
+# Code: 
+-- Creat a col that will contain the count the stars ratings/per rate 
+-- Filter by city of interest (city is linked to id from business and hence linked to business_id from review)
+-- counting stars grouped by stars rating
+
+Select r.stars  
+,count(r.stars) as countstars
+From review as r, business as b
+where (r.business_id = b.id  and b.city='Avon') 
+group by r.stars
+
+7. Find the top 3 users based on their total number of reviews: 
+
+# Code:
+
+Select name 
+,review_count 
+From user 
+order by review_count desc
+limit 3
+
+8. Does posing more reviews correlate with more fans? Explain findings and interpretation of the results:
+The number of fans does not seem to decay with the number of reviews written, hence giving a first look at this data
+I would say there is no positive correlation between both. Looking at the top 15 reviewers it can be seen that many of 
+them have very few fans. Still for this to be fully analysed I could plot #review vs #fans for better visualisation of the data 
+and then run a correlation statistical test   
+
+# Code: 
+
+-- Explore whether higher #reviews correlates with higher #fans
+ Select name 
+ ,review_count 
+ ,fans 
+ From user 
+ order by review_count desc
+ limit 15
+ 
+ 9. Are there more reviews with the word "love" or with the word "hate" in them? 
+ Answer: More reviews with the word ‘love’. Here are the number
+ 
+ # Code:
+ 
+ -- Find text with words 'love' and 'hate' in it and count them separately
+ Select sum(text like '%love%') as numTimes_love 
+ ,sum(text like '%hate%') as numTimes_hate 
+ From review
+ 
+ 10. Find the top 10 users with the most fans:
+ 
+ # Code:
+ 
+ -- Find the top 10 users with the most fans 
+ Select name
+ ,fans
+ From user 
+ order by fans desc 
+ limit 10
+ 
+ 11. Is there a strong relationship (or correlation) between having a high number of fans and being listed as "useful" or "funny?" 
+ Out of the top 10 users with the highest number of fans, what percent are also listed as “useful” or “funny”?
+ Key:0% - 25% - Low relationship
+ 26% - 75% - Medium relationship
+ 76% - 100% - Strong relationship 
+ 
+ # Code:
+ 
+ -- Explore whether higher #fans correlates with been highly tagged as useful or funny (higher #useful or funny)
+ -- For this profiling analysis the code has a subquery in which users (table user) are classified according to the number of fans. 
+ -- I set arbitrarily (and exploratory) low_numbfans = 0-50, medium_numbfans = 51-99, high_numbfans > 100, and select name, fans, and useful+funny listings.
+ -- From this subquery, it sums the total number of fans,use_fun listings inside each group. 
+ -- But it also counts the number of users inside each class, because sum of fans and numb of use_fun listings will have to be weighted to this values in order 
+ -- to have a fair comparison between #fans and #use_fun listings among the 3 different classes (low-medium-high amount of fans)
+ 
+ Select count(name) as numb_userinthis_class
+ ,sum(fans) as sum_fans
+ ,sum(use_fun) as sum_use_fun
+ ,sum(fans)/(count(name)) as weighted_sum_fans
+ ,sum(use_fun)/count(name) as weighted_sumuse_fun
+ ,fans_class from      
+                (Select name     
+                 ,fans,     
+                 case     
+                 when fans<51 then 'low_numbfans'
+                 when (fans>=51 and fans<100) then 'medium_numbfans'     
+                 when fans>=100 then 'high_numbfans'     
+                 end as fans_class     
+                 ,useful+funny as use_fun     
+                 From user    
+                 order by fans desc)
+  group by fans_class 
+ 
+ Explain your findings and interpretation of the results:
+ Weighting the sums is necessary because the amount of individuals inside each class is too different and this could affect the 
+ interpretation. For example, the sum_fans and sum_use_fun for low_numbfans class outreaches the numbers in medium_numbfans, 
+ but this is simply because  9952 individuals contributed to the final values. By dividing these numbers by the #individuals 
+ we get an objective measure.From the results above observing the "weighted amounts of fans and useful+funny listings” of each group-class
+ ,i.e.low-medium-high number of fans, it is clear that both variables correlate positively: higher amount of fans correlate with being listed as useful or funny.
+ 
+ 
+ Part 2: Inferences and Analysis
+ 1. Pick one city and category of your choice and group the businesses in that city or category by their overall star rating. 
+ Compare the businesses with 2-3 stars to the businesses with 4-5 stars and answer the following questions. 
+ i. Do the two groups you chose to analyze have a different distribution of hours?
+ 
+ After a qualitative inspection, low_rating businesses in Las Vegas tend to have a longer opening hours (8-22 for ex), while high-rated 
+ businesses have more office time hours (8-17 for ex)
+ 
+ # Code: 
+ 
+ -- Go through a subquery that selects the city and stars from 2-5 dropping the 3.5 rating(as it is not asked to be included) and joins with table hours. 
+ -- second subquery goes through a case statement to classify the stars as low or high rating. 
+ -- Finally it extract from these two groups, hour,rating class columns to visualise the distribution of hours both classes have. 
+ -- This is a qualitative inspection.
+ 
+ select hours
+ ,ratingclass 
+ from     
+       (select name      
+        ,stars      
+        ,hours,      
+        case 
+        -- classification according to #stars      
+        when stars in (2.0,2.5,3.0) then 'low_rating'      
+             else 'high_rating' end as ratingclass      
+             from             
+                  (select name
+                   --subquery to take data from 1 city/leave out stars <2            
+                   ,stars            
+                   ,hours            
+                   from business inner join hours on business.id= hours.business_id
+                   where (city='Las Vegas' and stars >1.5 and stars!=3.5)            
+                           order by stars)) 
+                   limit 25 --offset 25
+                   
+                   
+ii. Do the two groups you chose to analyze have a different number of reviews?
+Yes. they have a different number of reviews.
+
+# Code:
+
+-- Go through two subqueries in which it is first selected the reviews_count and stars (over 1.5 and not 3.5, as this is not included in 
+--the assignment) from a chosen city ('Las Vegas'). Then classify stars by low_rating (2 to 3stars)/high_rating (>3.5 stars). 
+-- Finally, count reviews for these two classes. 
+
+select count (review_count) as totrev_count
+,ratingclass 
+from     
+     (select name      
+      ,stars      
+      ,review_count,      
+      case 
+      -- classification according to #stars      
+       when stars in (2.0,2.5,3.0) then 'low_rating'      
+          else 'high_rating' end as ratingclass      
+       from             
+            (select name
+            --subquery to take data from 1 city/leave out stars <2            
+            ,stars            
+            ,review_count            
+            from business            
+            where (city='Las Vegas' and stars >1.5 and stars!=3.5)             
+                    order by stars))
+group by ratingclass  -- counts the reviews by group ratingclass
+
+iii. Are you able to infer anything from the location data provided between these two groups? 
+Explain.
+From the analysis below, it can be seen that both groups have ratings coming from the same neighbourhoods. 
+
+# Code:
+
+-- As the question before: the code goes through two subqueries in which selects firstly reviews and stars (over 1.5) from a chosen city ('Las Vegas'). 
+-- Then, classify stars by low_rating (2 to 3.5 stars)/high_rating (>3.5 stars). 
+-- Finally, counts #times a neighborhood appears associated to that rating grouping by ratingclass (low or high), 
+-- gives the name of the neighborhood and ratingclass. It perfoms this twice making a UNION for the 2 grouping (low/high ratingclass) 
+-- so that presence of a common neighbor is visible.
+
+select neighborhood
+,count(neighborhood) as count_neigh
+,ratingclass
+from     
+     (select name      
+      ,stars      
+      ,neighborhood,      
+      case 
+      -- classification according to #stars      
+      when stars in (2.0,2.5,3.0) then 'low_rating'      
+           else 'high_rating' end as ratingclass      
+      from            
+           (select name
+            --subquery to take data from 1 city/leave out stars <2            
+            ,stars            
+            ,neighborhood            
+            ,review_count            
+            from business      
+            where (city='Las Vegas' and stars >1.5 and stars!=3.5)             
+            order by stars))
+ where ratingclass= ‘high_rating'
+ group by neighborhood
+ 
+ union 
+ 
+ select neighborhood 
+ ,count(neighborhood) as count_neigh
+ ,ratingclass
+ from     
+     (select name      
+      ,stars      
+      ,neighborhood,      
+      case 
+      -- classification according to #stars      
+      when stars in (2.0,2.5,3.0) then 'low_rating'      
+           else 'high_rating' end as ratingclass      
+      from            
+          (select name
+           --subquery to take data from 1 city/leave out stars <2            
+           ,stars            
+           ,neighborhood            
+           ,review_count            
+           from business            
+           where (city='Las Vegas' and stars >1.5 and stars!=3.5)             
+           order by stars))
+where ratingclass= 'low_rating'
+group by neighborhood  
+limit 25 --offset 25
+
+2. Group business based on the ones that are open and the ones that are closed. 
+What differences can you find between the ones that are still open and the ones that are closed? 
+List at least two differences and the SQL code you used to arrive at your answer.
+i. Difference 1: Amount of reviews is higher (almost ten times) in the businesses that are open:
+
+# Code:
+-- As a first profiling, check the amount of reviews for businesses open and not open
+
+select sum(review_count) as tot_numrevs
+,is_openfrom business
+group by is_open
+
+
+ii. Difference 2: The amount of stars rating given to open business is much higher than for not_opened ones. 
+This, as the difference described above could be simply due to the fact that open businesses keep accumulating data while the 
+not_opened ones stopped at some point. 
+
+Difference 3 (with the same code as Difference 2): The distribution of stars ratings seems to be slightly better for the open business, 
+as 4-5 stars have the higher percentage of rating while for not_opened ones 3.5-4.5 have the higher percentages (see table of results)  
+
+# Code:
+
+-- As a second profiling, check what is/was amount of rating given and the distribution of stars rating (in percentage) 
+-- for the business open/not_open
+
+Select is_open
+,stars
+,sum(stars) -- sum the # of stars given by grouping them
+,tot_stars -- the tot # of stars given to open
+,round(100*(sum(stars)/tot_stars)) as perc_stars --round the perc for better visualization
+from business cross join                           
+                        (select sum(stars) as tot_stars -- cross join with subquery that picks the tot # of stars for open shops                         
+                         from business                           
+                         where is_open=1)
+where is_open=1
+group by stars  
+
+Union  -- Make a union with extracted sum of stars and percentage for not_open business
+
+Select is_open
+,stars
+,sum(stars) -- sum the # of stars given by grouping them
+,tot_stars -- the tot # of stars given to open
+,round(100*(sum(stars)/tot_stars)) as perc_stars --round the perc for better visualization
+from business cross join                         
+                        (select sum(stars) as tot_stars -- cross join with subquery that picks the tot # of stars for open shops                         
+                         from business                        
+                         where is_open=0)
+where is_open=0
+group by stars
+
+3. For this last part of your analysis, you are going to choose the type of analysis you want to conduct on the Yelp dataset and are going 
+to prepare the data for analysis.
+Ideas for analysis include: Parsing out keywords and business attributes for sentiment analysis, clustering businesses to find commonalities
+or anomalies between them, predicting the overall star rating for a business, predicting the number of fans a user will have, and so on. 
+These are just a few examples to get you started, so feel free to be creative and come up with your own problem you want to solve. 
+Provide answers, in-line, to all of the following:
+
+i. Indicate the type of analysis you chose to do: I’ll prepare the data to do clustering of businesses to find commonalities or anomalies. 
+I’ll select columns/tables I consider informative for this type of future analysis
+
+ii. Write 1-2 brief paragraphs on the type of data you will need for your analysis and why you chose that data:For this I will need business
+table: I’ll extract id, neighborhood, latitude, longitude, stars and review_count either for open business as well as not open 
+(is_opne column). I’ll join this table to category (category column). I chose this data because I could analyse for ex: rate of open/closed 
+business according to neighborhood/stars/review_count. I could also analyse what’s the effect of been close to similar businesses 
+(by extracting latitude/longitude) for example on star rating or rev_count. This could lead to an analysis of the kind: 
+how beneficial is the clustering of restaurants as customers have more choice. 
+
+# Code:
+
+Select b.id
+,b.neighborhood
+,b.city
+,b.latitude
+,b.longitude
+,b.stars
+,b.review_count
+,b.is_open
+,c.category
+from business as b inner join category as c on b.id=c.business_id
+
+
+
+
+
+
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
